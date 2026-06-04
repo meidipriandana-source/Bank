@@ -1,0 +1,6 @@
+{
+  "name": "Web App Sertifikat Diklat Online",
+  "description": "Sistem Manajemen Sertifikat Diklat Online terintegrasi Google Apps Script, Google Sheets, dan Google Drive. Disertai dashboard admin, kelola folder diklat, peserta, generator PDF, QR Code otomatis, dan halaman verifikasi publik.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

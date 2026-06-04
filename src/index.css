@@ -1,0 +1,75 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Poppins", "Inter", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+/* Animations and tweaks */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Scrollbar tweaks */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--primary-color, #0F4C81) 20%, transparent);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--primary-color, #0F4C81) 40%, transparent);
+}
+
+/* Custom dynamic brand color overrides */
+:root {
+  --primary-color: #0F4C81;
+  --primary-color-hover: #1E88E5;
+}
+
+/* Overriding generated Tailwind utilities to map to dynamic branding colors */
+.bg-\[\#0F4C81\] { background-color: var(--primary-color) !important; }
+.text-\[\#0F4C81\] { color: var(--primary-color) !important; }
+.border-\[\#0F4C81\] { border-color: var(--primary-color) !important; }
+.accent-\[\#0F4C81\] { accent-color: var(--primary-color) !important; }
+
+.hover\:bg-\[\#0F4C81\]:hover { background-color: var(--primary-color) !important; }
+.hover\:text-\[\#0F4C81\]:hover { color: var(--primary-color) !important; }
+.group-hover\:text-\[\#0F4C81\]:hover { color: var(--primary-color) !important; }
+
+/* Mid-state variations */
+.hover\:bg-\[\#1E88E5\]:hover { background-color: var(--primary-color-hover) !important; }
+.hover\:text-\[\#1E88E5\]:hover { color: var(--primary-color-hover) !important; }
+
+.focus\:border-\[\#0F4C81\]:focus { border-color: var(--primary-color) !important; }
+.focus\:ring-\[\#0F4C81\]:focus { --tw-ring-color: var(--primary-color) !important; ring-color: var(--primary-color) !important; }
+
+/* Semi-transparent variants using standard color-mix */
+.bg-\[\#0F4C81\]\/5 { background-color: color-mix(in srgb, var(--primary-color) 5%, transparent) !important; }
+.bg-\[\#0F4C81\]\/10 { background-color: color-mix(in srgb, var(--primary-color) 10%, transparent) !important; }
+.bg-\[\#0F4C81\]\/15 { background-color: color-mix(in srgb, var(--primary-color) 15%, transparent) !important; }
+.border-\[\#0F4C81\]\/15 { border-color: color-mix(in srgb, var(--primary-color) 15%, transparent) !important; }
+.border-\[\#0F4C81\]\/25 { border-color: color-mix(in srgb, var(--primary-color) 25%, transparent) !important; }
+
+/* Hover highlight / accent colors */
+.bg-\[\#1E88E5\] { background-color: var(--primary-color-hover) !important; }
+.text-\[\#1E88E5\] { color: var(--primary-color-hover) !important; }
+.border-\[\#1E88E5\] { border-color: var(--primary-color-hover) !important; }
+.accent-\[\#1E88E5\] { accent-color: var(--primary-color-hover) !important; }
+
+.bg-\[\#1E88E5\]\/10 { background-color: color-mix(in srgb, var(--primary-color-hover) 10%, transparent) !important; }
+.bg-\[\#1E88E5\]\/15 { background-color: color-mix(in srgb, var(--primary-color-hover) 15%, transparent) !important; }
+.bg-\[\#1E88E5\]\/25 { background-color: color-mix(in srgb, var(--primary-color-hover) 25%, transparent) !important; }
