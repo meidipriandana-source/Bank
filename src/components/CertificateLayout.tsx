@@ -169,7 +169,7 @@ export default function CertificateLayout({ peserta, folder, verifyUrl }: Certif
     return (
       <div
         id={`certificate-print-${peserta.id}`}
-        className="relative w-full aspect-[297/210] max-w-[950px] mx-auto bg-white shadow-xl overflow-hidden font-sans select-none flex items-center justify-center"
+        className="relative w-full aspect-[297/210] max-w-[950px] mx-auto bg-white shadow-xl overflow-hidden font-sans select-none flex items-center justify-center certificate-print-target"
       >
         {isPdf ? (
           <embed
@@ -205,7 +205,7 @@ export default function CertificateLayout({ peserta, folder, verifyUrl }: Certif
   return (
     <div
       id={`certificate-print-${peserta.id}`}
-      className={`relative w-full aspect-[297/210] max-w-[950px] mx-auto bg-white shadow-xl overflow-hidden font-sans select-none ${
+      className={`relative w-full aspect-[297/210] max-w-[950px] mx-auto bg-white shadow-xl overflow-hidden font-sans select-none certificate-print-target ${
         config.showBorder ? 'border-[16px] border-[#0F4C81]' : 'border-0'
       }`}
       style={backgroundStyle}

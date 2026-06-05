@@ -17,7 +17,8 @@ import {
   FileText,
   AlertTriangle,
   Settings,
-  RefreshCw
+  RefreshCw,
+  Printer
 } from 'lucide-react';
 import CertificateLayout, { isCertExpired, getValidityInfo, getEffectiveConfig } from './CertificateLayout';
 
@@ -1635,49 +1636,30 @@ export default function ParticipantsView({
               <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={() => {
-                    if (activeCertPeserta.pdfData) {
+                    window.print();
+                  }}
+                  className="flex-1 sm:flex-initial bg-[#0F4C81] hover:bg-[#1E88E5] text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Printer className="h-4 w-4" />
+                  Cetak Sertifikat
+                </button>
+
+                {activeCertPeserta.pdfData && (
+                  <button
+                    onClick={() => {
                       const link = document.createElement('a');
-                      link.href = activeCertPeserta.pdfData;
+                      link.href = activeCertPeserta.pdfData!;
                       link.download = activeCertPeserta.pdfName || `Sertifikat_${activeCertPeserta.name.replace(/\s+/g, '_')}.pdf`;
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
-                      return;
-                    }
-
-                    const printContents = document.getElementById(`certificate-print-${activeCertPeserta.id}`)?.outerHTML;
-                    if (printContents) {
-                      const printWindow = window.open('', '', 'width=950,height=670');
-                      if (printWindow) {
-                        printWindow.document.write(`
-                          <html>
-                            <head>
-                              <title>Cetak Sertifikat ${activeCertPeserta.name}</title>
-                              <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-                              <script src="https://cdn.tailwindcss.com"></script>
-                            </head>
-                            <body onload="window.print();">
-                              <div style="width:100%; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#fff;">
-                                ${printContents}
-                                <style>
-                                  @media print {
-                                    body { background: #fff; }
-                                    .print\\:shadow-none { box-shadow: none !important; }
-                                  }
-                                </style>
-                              </div>
-                            </body>
-                          </html>
-                        `);
-                        printWindow.document.close();
-                      }
-                    }
-                  }}
-                  className="flex-1 sm:flex-initial bg-[#1E88E5] hover:bg-[#0F4C81] text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Download className="h-4 w-4" />
-                  {activeCertPeserta.pdfData ? 'Unduh Berkas PDF Asli' : 'Cetak / Download PDF'}
-                </button>
+                    }}
+                    className="flex-1 sm:flex-initial bg-[#1E88E5] hover:bg-[#0F4C81] text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Download className="h-4 w-4" />
+                    Unduh Berkas PDF Asli
+                  </button>
+                )}
 
                 <button
                   onClick={() => setShowCertModal(false)}

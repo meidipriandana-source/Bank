@@ -123,9 +123,9 @@ export default function AppsScriptCenter() {
                   </h4>
                   <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                     Folder Google Drive penyimpanan sertifikat Anda telah diverifikasi pada ID:
-                    <code className="bg-slate-100 text-slate-850 px-1.5 py-0.5 rounded font-mono font-semibold block mt-1.5 mb-1.5 select-all text-[10px] border border-slate-200/50 break-all">1tlOtNSi9GqKhCEryyrSnfwT8h0U_1skz</code>
+                    <code className="bg-slate-100 text-slate-850 px-1.5 py-0.5 rounded font-mono font-semibold block mt-1.5 mb-1.5 select-all text-[10px] border border-slate-200/50 break-all">1dUcuP_LownZK-q6Cd4ecg94T9ZggHGXX</code>
                     <a 
-                      href="https://drive.google.com/drive/folders/1tlOtNSi9GqKhCEryyrSnfwT8h0U_1skz" 
+                      href="https://drive.google.com/drive/folders/1dUcuP_LownZK-q6Cd4ecg94T9ZggHGXX" 
                       target="_blank" 
                       rel="noreferrer" 
                       className="text-[#0F4C81] hover:text-[#1E88E5] font-bold text-[11px] inline-flex items-center gap-1 mt-0.5 group"
@@ -145,9 +145,9 @@ export default function AppsScriptCenter() {
                   </h4>
                   <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                     Sistem basis data terhubung ke fail Google Sheets Anda pada ID:
-                    <code className="bg-slate-100 text-slate-850 px-1.5 py-0.5 rounded font-mono font-semibold block mt-1.5 mb-1.5 select-all text-[10px] border border-slate-200/50 break-all">1Ls_FN5ueHXGNI7HgSE6WWIM2KGU9_7L1olj01B8hjCw</code>
+                    <code className="bg-slate-100 text-slate-850 px-1.5 py-0.5 rounded font-mono font-semibold block mt-1.5 mb-1.5 select-all text-[10px] border border-slate-200/50 break-all">1T8QxUuWna4T-YV7wPiYQendHGhmAgy13tXlYRm7P1mw</code>
                     <a 
-                      href="https://docs.google.com/spreadsheets/d/1Ls_FN5ueHXGNI7HgSE6WWIM2KGU9_7L1olj01B8hjCw/edit" 
+                      href="https://docs.google.com/spreadsheets/d/1T8QxUuWna4T-YV7wPiYQendHGhmAgy13tXlYRm7P1mw/edit" 
                       target="_blank" 
                       rel="noreferrer" 
                       className="text-[#1E88E5] hover:text-[#0f4c81] font-bold text-[11px] inline-flex items-center gap-1 mt-0.5 group"

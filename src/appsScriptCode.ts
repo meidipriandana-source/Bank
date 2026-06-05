@@ -17,7 +17,7 @@ export const appsScriptFiles: AppsScriptFile[] = [
  */
 
 // WARNING: Ganti ID_FOLDER_UTAMA dengan ID Folder di Google Drive Anda di mana semua subfolder diklat akan disimpan.
-var PARENT_FOLDER_ID = "1tlOtNSi9GqKhCEryyrSnfwT8h0U_1skz"; 
+var PARENT_FOLDER_ID = "1dUcuP_LownZK-q6Cd4ecg94T9ZggHGXX"; 
 
 /**
  * Setup data awal dan route doGet.
@@ -2128,7 +2128,7 @@ Sistem ini didesain beroperasi secara penuh menggunakan ekosistem Google:
 3.  Buat berkas kode pendukung dengan struktur nama persis seperti di bawah ini, lalu salin berkas dari aplikasi simulator kami:
     
     *   Buat berkas script: **\`Code\`** (otomatis bertipe \`.gs\`) -> masukkan isi dari **Code.gs**
-        *   **Penting**: Baris \`var PARENT_FOLDER_ID = "1tlOtNSi9GqKhCEryyrSnfwT8h0U_1skz";\` di bagian paling atas sudah kami isi secara otomatis dengan ID Folder Drive Anda. Anda dapat langsung menggunakannya!
+        *   **Penting**: Baris \`var PARENT_FOLDER_ID = "1dUcuP_LownZK-q6Cd4ecg94T9ZggHGXX";\` di bagian paling atas sudah kami isi secara otomatis dengan ID Folder Drive Anda. Anda dapat langsung menggunakannya!
     *   Buat berkas HTML: **\`Index\`** -> masukkan isi dari **Index.html**
     *   Buat berkas HTML: **\`Dashboard\`** -> masukkan isi dari **Dashboard.html**
     *   Buat berkas HTML: **\`FolderDiklat\`** -> masukkan isi dari **FolderDiklat.html**
