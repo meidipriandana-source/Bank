@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { SuratDokumen } from '../types';
 import {
   Inbox,
@@ -31,6 +31,34 @@ interface TelaahMasukViewProps {
   onExportSuratList: () => void;
 }
 
+const base64ToBlobUrl = (base64Data: string): string => {
+  try {
+    const parts = base64Data.split(',');
+    if (parts.length < 2) return base64Data;
+    const mime = parts[0].match(/:(.*?);/)?.[1] || 'application/pdf';
+    const b64 = parts[1];
+    const sliceSize = 1024;
+    const byteCharacters = atob(b64);
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+
+    const blob = new Blob(byteArrays, { type: mime });
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    console.error('Error converting base64 to blob url:', error);
+    return base64Data;
+  }
+};
+
 export default function TelaahMasukView({
   suratList,
   onAddSurat,
@@ -53,6 +81,23 @@ export default function TelaahMasukView({
   const [activePreviewDoc, setActivePreviewDoc] = useState<SuratDokumen | null>(null);
   const [activeEditDoc, setActiveEditDoc] = useState<SuratDokumen | null>(null);
   const [activeDeleteDoc, setActiveDeleteDoc] = useState<SuratDokumen | null>(null);
+
+  // Manage Blob URL for active preview document to bypass iframe sandboxing restrictions on data-URIs
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (isPreviewModalOpen && activePreviewDoc && activePreviewDoc.link) {
+      if (activePreviewDoc.link.startsWith('data:application/pdf')) {
+        const url = base64ToBlobUrl(activePreviewDoc.link);
+        setPreviewUrl(url);
+        return () => {
+          URL.revokeObjectURL(url);
+        };
+      }
+    }
+    setPreviewUrl('');
+    return undefined;
+  }, [isPreviewModalOpen, activePreviewDoc]);
 
   // Form input States for Add
   const [addForm, setAddForm] = useState({
@@ -78,6 +123,9 @@ export default function TelaahMasukView({
     division: '',
     desc: ''
   });
+  const [uploadedEditBase64, setUploadedEditBase64] = useState<string>('');
+  const [uploadedEditFileName, setUploadedEditFileName] = useState<string>('');
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   const restoreFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -149,11 +197,34 @@ export default function TelaahMasukView({
     setIsAddModalOpen(false);
   };
 
+  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      alert('Maaf, sistem hanya mendukung format PDF untuk berkas otentik.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      if (evt.target?.result) {
+        setUploadedEditBase64(evt.target.result as string);
+        setUploadedEditFileName(file.name);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeEditDoc) return;
 
-    onEditSurat(activeEditDoc.rowIndex, editForm);
+    onEditSurat(activeEditDoc.rowIndex, {
+      ...editForm,
+      link: uploadedEditBase64,
+      fileName: uploadedEditFileName
+    });
     setIsEditModalOpen(false);
     setActiveEditDoc(null);
   };
@@ -169,6 +240,8 @@ export default function TelaahMasukView({
       division: doc.division,
       desc: doc.desc
     });
+    setUploadedEditBase64(doc.link || '');
+    setUploadedEditFileName(doc.fileName || '');
     setIsEditModalOpen(true);
   };
 
@@ -214,14 +287,8 @@ export default function TelaahMasukView({
     e.target.value = '';
   };
 
-  // Generate generic document URL for display fellbacks if no real pdf is uploaded
-  const getDocumentPreviewUrl = (doc: SuratDokumen) => {
-    if (doc.link && doc.link.startsWith('data:application/pdf')) {
-      return doc.link;
-    }
-
-    // fallback html document layout if there is no authentic PDF
-    const embedContent = `
+  const getFallbackHtml = (doc: SuratDokumen) => {
+    return `
       <html>
         <head>
           <style>
@@ -244,7 +311,7 @@ export default function TelaahMasukView({
           <div class="letter-card">
             <div class="header-banner">
               <h2>PELAYANAN PER-SURATAN DIKLAT RSUD</h2>
-              <p>JL. Pasir Putih No. 12 Sengkawit, Tanjung Selor, Provinsi Kalimantan Utara</p>
+              <p>JL. Pulau Irian No. 95, Tarakan, Provinsi Kalimantan Utara</p>
               <p>Email: admin.diklat@rsud.jusuf-sk.go.id | Telp: (0552) 21151</p>
             </div>
             <div class="letter-meta">
@@ -274,7 +341,7 @@ export default function TelaahMasukView({
             </div>
             <div class="letter-footer">
               <div class="signature-block">
-                Tanjung Selor, ${doc.entryDate}<br/>
+                Tarakan, ${doc.entryDate}<br/>
                 <strong>Verifikator Diklat,</strong>
                 <div class="signature-name">${doc.employee}</div>
                 <div class="signature-info">${doc.division}</div>
@@ -284,8 +351,14 @@ export default function TelaahMasukView({
         </body>
       </html>
     `;
+  };
 
-    return `data:text/html;charset=utf-8,${encodeURIComponent(embedContent)}`;
+  // Generate generic document URL for display fellbacks if no real pdf is uploaded
+  const getDocumentPreviewUrl = (doc: SuratDokumen) => {
+    if (doc.link && doc.link.startsWith('data:application/pdf')) {
+      return doc.link;
+    }
+    return `data:text/html;charset=utf-8,${encodeURIComponent(getFallbackHtml(doc))}`;
   };
 
   return (
@@ -668,6 +741,32 @@ export default function TelaahMasukView({
             </div>
 
             <form onSubmit={handleEditSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[75vh]">
+              {/* File upload for edit */}
+              <div className="p-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-center space-y-1.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
+                <FileText className="h-8 w-8 text-slate-400 mx-auto" />
+                <h5 className="font-bold text-xs text-slate-700 dark:text-slate-300">
+                  {uploadedEditFileName ? 'Fisik Dokumen Terpasang' : 'Belum Ada Fisik Dokumen (PDF)'}
+                </h5>
+                <p className="text-[10px] text-slate-450 leading-relaxed">
+                  {uploadedEditFileName ? `${uploadedEditFileName} (Terunggah)` : 'Unggah dokumen PDF asli untuk menetapkan atau mengganti lampiran fisik'}
+                </p>
+                <input
+                  type="file"
+                  onChange={handleEditFileChange}
+                  accept=".pdf"
+                  className="hidden"
+                  id="pdf-upload-file-picker-edit"
+                  ref={editFileInputRef}
+                />
+                <button
+                  type="button"
+                  onClick={() => editFileInputRef.current?.click()}
+                  className="mt-2 text-[10px] font-bold text-[#0F4C81] border border-slate-200 dark:border-slate-700 hover:bg-slate-150 px-2.5 py-1 rounded bg-white dark:bg-slate-800 dark:text-sky-455 cursor-pointer"
+                >
+                  {uploadedEditFileName ? 'Ganti Berkas PDF' : 'Pilih Berkas PDF Asli'}
+                </button>
+              </div>
+
               {/* Grid Inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -780,9 +879,12 @@ export default function TelaahMasukView({
               </div>
               <div className="flex items-center gap-2">
                 <a
-                  href={getDocumentPreviewUrl(activePreviewDoc)}
-                  target="_blank"
-                  rel="noreferrer"
+                  href={previewUrl || getDocumentPreviewUrl(activePreviewDoc)}
+                  download={
+                    activePreviewDoc.link && activePreviewDoc.link.startsWith('data:application/pdf')
+                      ? activePreviewDoc.fileName || `Arsip_${activePreviewDoc.id}.pdf`
+                      : `Arsip_${activePreviewDoc.id}.html`
+                  }
                   className="bg-[#0F4C81] text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-[#1E88E5] transition-colors flex items-center gap-1"
                 >
                   <Download className="h-3 w-3" /> Unduh Berkas
@@ -796,13 +898,136 @@ export default function TelaahMasukView({
               </div>
             </div>
 
-            <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-4 overflow-hidden relative">
-              <iframe
-                src={getDocumentPreviewUrl(activePreviewDoc)}
-                className="w-full h-full rounded-lg border border-slate-200 bg-white"
-                frameBorder="0"
-                title={`Arsip_${activePreviewDoc.id}`}
-              />
+            <div className="flex-1 bg-slate-100 dark:bg-slate-950 overflow-y-auto relative p-4 md:p-6 text-left">
+              <div className="p-4 md:p-6 overflow-y-auto h-full">
+                {/* Physical Paper Simulation Sheet */}
+                <div className="bg-white text-slate-800 max-w-[680px] mx-auto p-6 sm:p-10 md:p-12 shadow-lg rounded-xl border border-slate-200/80 text-left relative font-sans leading-relaxed transition-colors">
+                  
+                  {/* Elegant PDF Attachment Action Bar - displayed at the top of the sheet when a PDF is uploaded */}
+                  {activePreviewDoc.link && activePreviewDoc.link.startsWith('data:application/pdf') && (
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 mb-6 transition-all shadow-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-emerald-600 text-white rounded-xl shrink-0">
+                          <FileText className="h-5.5 w-5.5" />
+                        </div>
+                        <div className="text-left">
+                          <span className="text-[9px] text-emerald-600 font-extrabold uppercase tracking-wider font-mono block">Berkas Fisik PDF Terlampir</span>
+                          <p className="font-bold text-xs text-slate-800 break-all leading-snug">
+                            {activePreviewDoc.fileName || `Arsip_Otentik_${activePreviewDoc.id}.pdf`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0 w-full sm:w-auto">
+                        <a
+                          href={previewUrl || getDocumentPreviewUrl(activePreviewDoc)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 sm:flex-none text-center px-4 py-2 bg-[#0F4C81] hover:bg-[#1E88E5] text-white text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-sm hover:scale-[1.02] active:scale-95 cursor-pointer"
+                        >
+                          <Eye className="h-3.5 w-3.5" /> Buka PDF (Tab Baru)
+                        </a>
+                        <a
+                          href={previewUrl || getDocumentPreviewUrl(activePreviewDoc)}
+                          download={activePreviewDoc.fileName || `Arsip_${activePreviewDoc.id}.pdf`}
+                          className="flex-1 sm:flex-none text-center px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-250 text-slate-700 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-xs hover:scale-[1.02] active:scale-95 cursor-pointer"
+                        >
+                          <Download className="h-3.5 w-3.5" /> Unduh PDF
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Letter Header */}
+                  <div className="text-center border-b-4 border-double border-[#0f4c81] pb-4 mb-6">
+                    <h2 className="text-[#0f4c81] font-extrabold text-sm sm:text-base md:text-lg tracking-wider uppercase">
+                      PELAYANAN PER-SURATAN DIKLAT RSUD
+                    </h2>
+                    <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-1">
+                      JL. Pulau Irian No. 95, Tarakan, Provinsi Kalimantan Utara
+                    </p>
+                    <p className="text-[9px] sm:text-[10px] text-slate-400 font-mono mt-0.5">
+                      Email: admin.diklat@rsud.jusuf-sk.go.id | Telp: (0552) 21151
+                    </p>
+                  </div>
+
+                  {/* Letter Meta */}
+                  <div className="flex flex-col sm:flex-row justify-between gap-3 text-[11px] sm:text-xs mb-6 pb-4 border-b border-dashed border-slate-100">
+                    <div className="space-y-1">
+                      <p><span className="font-bold text-slate-450 inline-block w-20">Nomor:</span> <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded font-bold text-slate-800">{activePreviewDoc.suratNo}</span></p>
+                      <p><span className="font-bold text-slate-450 inline-block w-20">Sifat:</span> <span className="text-slate-800 font-medium">Segera / Penting</span></p>
+                      <p><span className="font-bold text-slate-455 inline-block w-20">Hal:</span> <span className="font-bold text-[#0f4c81]">{activePreviewDoc.docName}</span></p>
+                    </div>
+                    <div className="space-y-1 sm:text-right">
+                      <p><span className="font-bold text-slate-450 inline-block w-20 sm:w-auto sm:mr-2">Tanggal Berkas:</span> <span className="text-slate-800 font-semibold">{activePreviewDoc.entryDate}</span></p>
+                      <p><span className="font-bold text-slate-450 inline-block w-20 sm:w-auto sm:mr-2">Bagian / Unit:</span> <span className="text-slate-800 font-semibold">{activePreviewDoc.division}</span></p>
+                    </div>
+                  </div>
+
+                  {/* Subject Title */}
+                  <div className="text-center mb-6">
+                    <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm border-b-2 border-slate-900 inline-block px-8 sm:px-12 pb-1 uppercase tracking-wide">
+                      {activePreviewDoc.docName}
+                    </h3>
+                    <p className="text-[9px] sm:text-[10px] text-slate-400 font-mono mt-1">Kode Pencatatan Digital: {activePreviewDoc.id}</p>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed text-justify">
+                    <p>Dengan hormat,</p>
+                    <p>
+                      Melalui lembar penelaahan dokumen terverifikasi ini, Bagian Pendidikan dan Pelatihan RSUD mengesahkan bahwa berkas mengenai program kompetensi terkait telah sah dicatat dalam database simulator per-suratan diklat terpadu.
+                    </p>
+                    
+                    {/* Detailed summary receipt */}
+                    <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-200/70 space-y-2.5 font-sans my-4">
+                      <p className="text-xs font-bold text-[#0f4c81] border-b border-slate-200 pb-1 uppercase tracking-wide flex items-center gap-1.5">
+                        <span className="text-sm">📋</span> Lembar Informasi Arsip Digital
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-1.5 gap-x-2 text-xs pt-1">
+                        <span className="text-slate-400 font-semibold">Nama Dokumen:</span>
+                        <span className="sm:col-span-2 font-bold text-slate-800">{activePreviewDoc.docName}</span>
+                        
+                        <span className="text-slate-400 font-semibold">Kategori Surat:</span>
+                        <span className="sm:col-span-2 font-semibold text-slate-800">{activePreviewDoc.suratType}</span>
+
+                        <span className="text-slate-400 font-semibold">Nomor Registrasi:</span>
+                        <span className="sm:col-span-2 font-mono font-bold text-slate-800">{activePreviewDoc.suratNo}</span>
+
+                        <span className="text-slate-400 font-semibold">Karyawan Pengusul:</span>
+                        <span className="sm:col-span-2 font-semibold text-slate-800">{activePreviewDoc.employee}</span>
+
+                        <span className="text-slate-405 font-semibold">Divisi / Bagian:</span>
+                        <span className="sm:col-span-2 font-semibold text-slate-800">{activePreviewDoc.division}</span>
+
+                        <span className="text-slate-440 font-semibold">Uraian / Keterangan:</span>
+                        <span className="sm:col-span-2 text-slate-600 bg-white p-2.5 rounded border border-slate-150 text-xs italic block whitespace-pre-wrap">{activePreviewDoc.desc || 'Tidak ada keterangan tambahan yang diuraikan.'}</span>
+                      </div>
+                    </div>
+
+                    <p>
+                      Demikian lembar telaahan persuratan ini dibuat dengan sebenar-benarnya untuk digunakan sebagai instrumen pelacakan serta validasi kelengkapan berkas kepesertaan diklat secara akuntabel.
+                    </p>
+                  </div>
+
+                  {/* Signature Block */}
+                  <div className="mt-12 flex justify-end">
+                    <div className="text-center text-xs leading-5">
+                      <p className="text-slate-500">Tarakan, {activePreviewDoc.entryDate}</p>
+                      <p className="font-bold text-slate-755">Verifikator Diklat,</p>
+                      
+                      {/* Real system verification digital seal */}
+                      <div className="my-3 flex justify-center items-center relative h-12">
+                        <div className="absolute border-2 border-dashed border-emerald-500 bg-emerald-50 text-[9px] text-emerald-600 font-bold tracking-widest uppercase rotate-6 px-3 py-1.5 rounded shadow-sm scale-95 select-none hover:scale-100 transition-transform">
+                          ✓ VERIFIED BY SYSTEM
+                        </div>
+                      </div>
+
+                      <p className="font-extrabold text-[#0f4c81] uppercase underline mt-4">{activePreviewDoc.employee}</p>
+                      <p className="text-[10px] text-slate-400 font-medium">{activePreviewDoc.division}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FolderDiklat, Peserta, Certificate, DashboardStats, SuratDokumen } from './types';
 import { initialFolders, initialPeserta } from './initialData';
+import { getPDF, storePDF, deletePDF, clearAllPDFs } from './pdfStorage';
 import {
   Award,
   FolderOpen,
@@ -152,7 +153,27 @@ export default function App() {
     }
 
     if (savedSurat !== null) {
-      setSuratList(JSON.parse(savedSurat));
+      const parsedSuratList = JSON.parse(savedSurat) as SuratDokumen[];
+      setSuratList(parsedSuratList);
+      
+      // Load actual base64 links from IndexedDB asynchronously for each document
+      const loadPDFsFromIndexedDB = async () => {
+        try {
+          const enriched = await Promise.all(
+            parsedSuratList.map(async (doc) => {
+              const fileData = await getPDF(doc.id);
+              if (fileData) {
+                return { ...doc, link: fileData };
+              }
+              return doc;
+            })
+          );
+          setSuratList(enriched);
+        } catch (error) {
+          console.error('Failed to restore files from IndexedDB:', error);
+        }
+      };
+      loadPDFsFromIndexedDB();
     } else {
       const defaultSurat: SuratDokumen[] = [
         {
@@ -236,7 +257,12 @@ export default function App() {
     }));
     setSuratList(normalized);
     try {
-      localStorage.setItem('surat_list', JSON.stringify(normalized));
+      // Strip base64 PDF link before writing to localStorage to prevent QuotaExceededError
+      const stripped = normalized.map(({ link, ...item }) => ({
+        ...item,
+        link: ''
+      }));
+      localStorage.setItem('surat_list', JSON.stringify(stripped));
     } catch (e) {
       console.error('Quota exceeded for localStorage (surat_list):', e);
     }
@@ -457,18 +483,40 @@ export default function App() {
     };
     
     saveSuratListState([newSurat, ...suratList]);
+
+    // Store base64 data to IndexedDB
+    if (base64File) {
+      storePDF(id, base64File).catch((e) => {
+        console.error('Failed to store PDF file in IDB:', e);
+      });
+    }
   };
 
   const handleEditSurat = (rowIndex: number, updated: Partial<SuratDokumen>) => {
-    const nextList = suratList.map((item) =>
-      item.rowIndex === rowIndex ? { ...item, ...updated } : item
-    );
+    const nextList = suratList.map((item) => {
+      if (item.rowIndex === rowIndex) {
+        if (updated.link) {
+          storePDF(item.id, updated.link).catch((e) => {
+            console.error('Failed to store edited PDF file in IDB:', e);
+          });
+        }
+        return { ...item, ...updated };
+      }
+      return item;
+    });
     saveSuratListState(nextList);
   };
 
   const handleDeleteSurat = (rowIndex: number) => {
+    const docToDelete = suratList.find((item) => item.rowIndex === rowIndex);
     const nextList = suratList.filter((item) => item.rowIndex !== rowIndex);
     saveSuratListState(nextList);
+
+    if (docToDelete) {
+      deletePDF(docToDelete.id).catch((e) => {
+        console.error('Failed to delete PDF from IDB:', e);
+      });
+    }
   };
 
   const handleImportSuratList = (csvText: string) => {
@@ -549,6 +597,9 @@ export default function App() {
         saveFoldersState([]);
         savePesertaState([]);
         saveSuratListState([]);
+        clearAllPDFs().catch((e) => {
+          console.error('Failed to clear PDFs from IDB:', e);
+        });
         triggerAlert('Data Dihapus', 'Seluruh data di simulator berhasil dikosongkan!');
         setActiveTab('dashboard');
       },
