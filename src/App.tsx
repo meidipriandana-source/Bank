@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FolderDiklat, Peserta, Certificate, DashboardStats } from './types';
+import { FolderDiklat, Peserta, Certificate, DashboardStats, SuratDokumen } from './types';
 import { initialFolders, initialPeserta } from './initialData';
 import {
   Award,
@@ -25,10 +25,11 @@ import FoldersView from './components/FoldersView';
 import ParticipantsView from './components/ParticipantsView';
 import AppsScriptCenter from './components/AppsScriptCenter';
 import PublicVerifyView from './components/PublicVerifyView';
+import TelaahMasukView from './components/TelaahMasukView';
 
 export default function App() {
   // Navigation Router state
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'folders' | 'participants' | 'apps_script' | 'verify'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'folders' | 'participants' | 'apps_script' | 'verify' | 'telaah_masuk'>('dashboard');
   const [prefilledVerifyId, setPrefilledVerifyId] = useState<string>('');
 
   // Dark Mode Theme Switcher State
@@ -114,6 +115,7 @@ export default function App() {
   // Local storage synchronized databases
   const [folders, setFolders] = useState<FolderDiklat[]>([]);
   const [peserta, setPeserta] = useState<Peserta[]>([]);
+  const [suratList, setSuratList] = useState<SuratDokumen[]>([]);
 
   // Mobile sidebar controls
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -125,6 +127,7 @@ export default function App() {
   useEffect(() => {
     const savedFolders = localStorage.getItem('diklat_folders');
     const savedPeserta = localStorage.getItem('diklat_peserta');
+    const savedSurat = localStorage.getItem('surat_list');
 
     if (savedFolders !== null) {
       setFolders(JSON.parse(savedFolders));
@@ -145,6 +148,45 @@ export default function App() {
         localStorage.setItem('diklat_peserta', JSON.stringify(initialPeserta));
       } catch (e) {
         console.error('Failed to set initial peserta in localStorage:', e);
+      }
+    }
+
+    if (savedSurat !== null) {
+      setSuratList(JSON.parse(savedSurat));
+    } else {
+      const defaultSurat: SuratDokumen[] = [
+        {
+          rowIndex: 1,
+          id: 'DOC-2026-001',
+          docName: 'Surat Delegasi Diklat Manajemen Keperawatan',
+          suratType: 'Surat Masuk',
+          suratNo: '445/812/DIKLIT/V/2026',
+          entryDate: '2026-05-18',
+          uploadDate: '2026-05-20 09:15',
+          employee: 'Nursiah Lestari, S.Kep',
+          division: 'Bidang Keperawatan',
+          desc: 'Delegasi pemanggilan training kepemimpinan ward manager untuk sertifikasi KARS.',
+          link: ''
+        },
+        {
+          rowIndex: 2,
+          id: 'DOC-2026-002',
+          docName: 'Nota Dinas Permohonan Sertifikat Keahlian Lanjut',
+          suratType: 'Surat Keluar',
+          suratNo: '445/ND-901/SDM/V/2026',
+          entryDate: '2026-05-24',
+          uploadDate: '2026-05-24 14:32',
+          employee: 'dr. Setiawan, Sp.An',
+          division: 'Instalasi Anestesi',
+          desc: 'Permohonan penerbitan lembar bukti registrasi keahlian bersertifikat dari komite medik.',
+          link: ''
+        }
+      ];
+      setSuratList(defaultSurat);
+      try {
+        localStorage.setItem('surat_list', JSON.stringify(defaultSurat));
+      } catch (e) {
+        console.error('Failed to set initial surat in localStorage:', e);
       }
     }
 
@@ -184,6 +226,19 @@ export default function App() {
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         triggerAlert('Penyimpanan Penuh', 'Penyimpanan lokal penuh karena jumlah data peserta / sertifikat melebihi batas browser.');
       }
+    }
+  };
+
+  const saveSuratListState = (updated: SuratDokumen[]) => {
+    const normalized = updated.map((item, idx) => ({
+      ...item,
+      rowIndex: idx + 1
+    }));
+    setSuratList(normalized);
+    try {
+      localStorage.setItem('surat_list', JSON.stringify(normalized));
+    } catch (e) {
+      console.error('Quota exceeded for localStorage (surat_list):', e);
     }
   };
 
@@ -377,13 +432,123 @@ export default function App() {
     savePesertaState([...newEntries, ...peserta]);
   };
 
+  const handleAddSurat = (
+    surat: Omit<SuratDokumen, 'rowIndex' | 'id' | 'uploadDate'>,
+    base64File: string,
+    fileName?: string
+  ) => {
+    const id = `DOC-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const now = new Date();
+    const uploadDate = `${now.toISOString().slice(0, 10)} ${now.toTimeString().slice(0, 5)}`;
+    
+    const newSurat: SuratDokumen = {
+      rowIndex: suratList.length + 1,
+      id,
+      docName: surat.docName,
+      suratType: surat.suratType,
+      suratNo: surat.suratNo,
+      entryDate: surat.entryDate,
+      uploadDate,
+      employee: surat.employee,
+      division: surat.division,
+      desc: surat.desc,
+      link: base64File,
+      fileName
+    };
+    
+    saveSuratListState([newSurat, ...suratList]);
+  };
+
+  const handleEditSurat = (rowIndex: number, updated: Partial<SuratDokumen>) => {
+    const nextList = suratList.map((item) =>
+      item.rowIndex === rowIndex ? { ...item, ...updated } : item
+    );
+    saveSuratListState(nextList);
+  };
+
+  const handleDeleteSurat = (rowIndex: number) => {
+    const nextList = suratList.filter((item) => item.rowIndex !== rowIndex);
+    saveSuratListState(nextList);
+  };
+
+  const handleImportSuratList = (csvText: string) => {
+    try {
+      const lines = csvText.split('\n');
+      if (lines.length <= 1) return;
+      
+      const newDocs: SuratDokumen[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        const separator = line.includes(';') ? ';' : ',';
+        const parts = line.split(separator).map(p => p.replace(/^"|"$/g, '').trim());
+        
+        if (parts.length < 6) continue;
+        
+        newDocs.push({
+          rowIndex: i,
+          id: parts[0] || `DOC-2026-${Math.floor(100 + Math.random() * 900)}`,
+          docName: parts[1] || 'Arsip Dokumen',
+          suratType: (parts[2] === 'Surat Keluar' || parts[2]?.toLowerCase().includes('keluar')) ? 'Surat Keluar' : 'Surat Masuk',
+          suratNo: parts[3] || 'N/A',
+          entryDate: parts[4] || new Date().toISOString().slice(0, 10),
+          uploadDate: parts[5] || new Date().toISOString().slice(0, 10),
+          employee: parts[6] || 'Staff Administrasi',
+          division: parts[7] || 'Instalasi Diklat',
+          desc: parts[8] || '',
+          link: ''
+        });
+      }
+      
+      if (newDocs.length > 0) {
+        saveSuratListState(newDocs);
+        triggerAlert('Pemulihan Sukses', `Sebanyak ${newDocs.length} dokumen persuratan berhasil direstore.`);
+      }
+    } catch (e: any) {
+      triggerAlert('Pemulihan Gagal', `Gagal mengurai file CSV: ${e.message}`);
+    }
+  };
+
+  const handleExportSuratList = () => {
+    try {
+      const headers = 'ID,Nama Dokumen,Kategori,Nomor Surat,Tanggal Surat,Tanggal Upload,Pegawai,Divisi,Keterangan';
+      const rows = suratList.map((doc) => {
+        return [
+          `"${doc.id}"`,
+          `"${doc.docName.replace(/"/g, '""')}"`,
+          `"${doc.suratType}"`,
+          `"${doc.suratNo.replace(/"/g, '""')}"`,
+          `"${doc.entryDate}"`,
+          `"${doc.uploadDate}"`,
+          `"${doc.employee.replace(/"/g, '""')}"`,
+          `"${doc.division.replace(/"/g, '""')}"`,
+          `"${doc.desc.replace(/"/g, '""')}"`
+        ].join(',');
+      });
+      
+      const csvContent = [headers, ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `backup_surat_diklat_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e: any) {
+      triggerAlert('Gagal Ekspor', `Gagal membackup data: ${e.message}`);
+    }
+  };
+
   const handleResetAllData = () => {
     triggerConfirm(
       'Hapus Semua Data Simulator?',
-      'PERINGATAN: Apakah Anda yakin ingin menghapus seluruh data (Folder Diklat dan Peserta) secara permanen dari sistem simulator? Kredensial akan dikosongkan.',
+      'PERINGATAN: Apakah Anda yakin ingin menghapus seluruh data (Folder Diklat, Peserta, dan Surat Telaah Masuk) secara permanen dari sistem simulator? Kredensial akan dikosongkan.',
       () => {
         saveFoldersState([]);
         savePesertaState([]);
+        saveSuratListState([]);
         triggerAlert('Data Dihapus', 'Seluruh data di simulator berhasil dikosongkan!');
         setActiveTab('dashboard');
       },
@@ -487,6 +652,21 @@ export default function App() {
 
             <button
               onClick={() => {
+                setActiveTab('telaah_masuk');
+                setSidebarOpen(false);
+              }}
+              className={`w-full text-left flex items-center space-x-3 px-4 py-3 rounded-lg text-sm transition-colors group cursor-pointer ${
+                activeTab === 'telaah_masuk'
+                  ? 'bg-[#1E88E5] text-white font-medium shadow-sm'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">✉️</span>
+              <span className="font-medium">Telaah Surat Masuk</span>
+            </button>
+
+            <button
+              onClick={() => {
                 setActiveTab('apps_script');
                 setSidebarOpen(false);
               }}
@@ -574,6 +754,8 @@ export default function App() {
                   ? 'Manajemen Peserta'
                   : activeTab === 'apps_script'
                   ? 'Apps Script Code'
+                  : activeTab === 'telaah_masuk'
+                  ? 'Telaah Surat Masuk'
                   : 'Verifikasi Sertifikat'}
               </span>
             </div>
@@ -622,6 +804,7 @@ export default function App() {
               onNavigate={(tab) => setActiveTab(tab)}
               recentFolders={folders.slice(0, 3)}
               recentPeserta={peserta.slice(0, 3)}
+              suratList={suratList}
               primaryColor={primaryColor}
               onPrimaryColorChange={setPrimaryColor}
             />
@@ -653,6 +836,17 @@ export default function App() {
           )}
 
           {activeTab === 'apps_script' && <AppsScriptCenter />}
+
+          {activeTab === 'telaah_masuk' && (
+            <TelaahMasukView
+              suratList={suratList}
+              onAddSurat={handleAddSurat}
+              onEditSurat={handleEditSurat}
+              onDeleteSurat={handleDeleteSurat}
+              onImportSuratList={handleImportSuratList}
+              onExportSuratList={handleExportSuratList}
+            />
+          )}
 
           {activeTab === 'verify' && (
             <PublicVerifyView

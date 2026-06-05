@@ -1,12 +1,13 @@
 import React from 'react';
-import { DashboardStats, FolderDiklat, Peserta } from '../types';
-import { Folder, Award, Users, BookOpen, ChevronRight, Activity, Cpu, Palette } from 'lucide-react';
+import { DashboardStats, FolderDiklat, Peserta, SuratDokumen } from '../types';
+import { Folder, Award, Users, BookOpen, ChevronRight, Activity, Cpu, Palette, Inbox } from 'lucide-react';
 
 interface DashboardViewProps {
   stats: DashboardStats;
-  onNavigate: (view: 'folders' | 'participants' | 'apps_script' | 'verify') => void;
+  onNavigate: (view: 'folders' | 'participants' | 'apps_script' | 'verify' | 'telaah_masuk') => void;
   recentFolders: FolderDiklat[];
   recentPeserta: Peserta[];
+  suratList: SuratDokumen[];
   primaryColor: string;
   onPrimaryColorChange: (color: string) => void;
 }
@@ -26,6 +27,7 @@ export default function DashboardView({
   onNavigate, 
   recentFolders, 
   recentPeserta,
+  suratList,
   primaryColor,
   onPrimaryColorChange
 }: DashboardViewProps) {
@@ -65,18 +67,23 @@ export default function DashboardView({
           <p className="text-[10px] text-[#00ACC1] dark:text-cyan-400 font-semibold mt-3 uppercase tracking-wider">Terdaftar Aktif</p>
         </div>
 
-        {/* STAT 3: REGISTERED CERTS */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs transition-all hover:shadow-md">
+        {/* STAT 3: REGISTERED CERTS (REPLACED WITH CORRESPONDENCE) */}
+        <div 
+          onClick={() => onNavigate('telaah_masuk')}
+          className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs transition-all hover:shadow-md cursor-pointer text-left"
+        >
           <div className="flex justify-between items-start">
             <div className="space-y-1">
-              <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Sertifikat Terdaftar</p>
-              <h3 className="text-2xl sm:text-3xl font-extrabold text-[#00ACC1] dark:text-cyan-400 mt-1">{stats.totalCerts}</h3>
+              <p className="text-slate-500 dark:text-slate-405 text-xs font-semibold uppercase tracking-wider">Surat Masuk & Keluar</p>
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{suratList.length} Berkas</h3>
             </div>
-            <div className="bg-[#00ACC1]/10 dark:bg-cyan-500/10 p-2.5 rounded-lg text-[#00ACC1] dark:text-cyan-450">
-              <BookOpen className="h-5 w-5" />
+            <div className="bg-emerald-500/10 dark:bg-emerald-500/20 p-2.5 rounded-lg text-emerald-600 dark:text-emerald-420">
+              <Inbox className="h-5 w-5" />
             </div>
           </div>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-3">Total record database</p>
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-3 uppercase tracking-wider">
+            ✉️ {suratList.filter(s => s.suratType === 'Surat Masuk').length} Masuk | 📤 {suratList.filter(s => s.suratType === 'Surat Keluar').length} Keluar
+          </p>
         </div>
 
         {/* STAT 4: PUBLISHED CERTS */}
@@ -343,6 +350,21 @@ export default function DashboardView({
                   </span>
                 </span>
                 <ChevronRight className="h-3.5 w-3.5 text-slate-400 dark:text-slate-600 group-hover:text-[#00ACC1] dark:group-hover:text-cyan-305 group-hover:translate-x-0.5 transition-all" />
+              </button>
+
+              <button
+                onClick={() => onNavigate('telaah_masuk')}
+                className="w-full text-left p-2.5 border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/40 hover:bg-emerald-500/5 dark:hover:bg-slate-800 rounded-lg flex items-center justify-between transition-all group cursor-pointer"
+              >
+                <span className="flex items-center gap-2.5">
+                  <span className="p-1.5 bg-emerald-500/10 dark:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 rounded-md">
+                    <Inbox className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="font-semibold text-[11px] sm:text-xs text-slate-800 dark:text-slate-200">
+                    Telaah Surat Masuk / Keluar
+                  </span>
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 text-slate-400 dark:text-emerald-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
               </button>
             </div>
           </div>

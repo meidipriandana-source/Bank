@@ -119,3 +119,19 @@ export interface DashboardStats {
   totalCerts: number;
   totalPublished: number;
 }
+
+export interface SuratDokumen {
+  rowIndex: number;
+  id: string; // DOC-XXXXXX
+  docName: string;
+  suratType: 'Surat Masuk' | 'Surat Keluar';
+  suratNo: string;
+  entryDate: string;
+  uploadDate: string;
+  employee: string;
+  division: string;
+  desc: string;
+  link: string; // Base64 data url or generic link
+  fileName?: string;
+}
+
